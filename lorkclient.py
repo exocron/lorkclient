@@ -1,12 +1,35 @@
 import curses, re, textwrap
 from liblork import *
+from html.parser import HTMLParser
 
-newlinere = re.compile("<BR.*?>", re.IGNORECASE)
-gtre = re.compile("&gt;", re.IGNORECASE)
-nbspre = re.compile("&nbsp;", re.IGNORECASE)
-redre = re.compile("<font .*?color='#FE2E2E'.*?>", re.IGNORECASE)
-whitere = re.compile("<font .*?color='#ccc'.*?>", re.IGNORECASE)
-boldre = re.compile("<b>", re.IGNORECASE)
+class LorkHTMLParser(HTMLParser):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.data_acc = ""
+		self.is_bold = False # work-around for lack of </b> tags
+
+	def handle_data(self, data):
+		self.data_acc += data
+
+	def handle_starttag(self, tag, attrs):
+		if tag == "br":
+			if self.is_bold:
+				self.data_acc += chr(266 + 2)
+				self.is_bold = False
+			self.data_acc += "\n"
+		elif tag == "font":
+			for key, value in attrs:
+				if key == "color" and value.lower() == "#fe2e2e":
+					# abusing unicode characters >256 as control codes
+					self.data_acc += chr(256 + 3)
+				elif key == "color" and value.lower() in ("#ccc", "#cccccc"):
+					self.data_acc += chr(256 + 1)
+		elif tag == "b":
+			self.data_acc += chr(266 + 1)
+			self.is_bold = True
+
+	def get_data(self):
+		return self.data_acc
 
 class Screen:
 	def __init__(self, stdscr):
@@ -56,7 +79,7 @@ class Screen:
 		self.stdscr.refresh()
 
 	def renderTitle(self, text):
-		self.stdscr.addstr(0, 0, " " * self.cols, curses.color_pair(2))
+		self.stdscr.chgat(0, 0, -1, curses.color_pair(2))
 		if len(text) > self.cols:
 			text = text[:self.cols]
 		self.stdscr.addstr(0, (self.cols - len(text)) // 2, text,
@@ -72,14 +95,13 @@ class Screen:
 				curses.color_pair(2))
 
 	def renderLines(self, lines):
+		self.lineattr &= ~curses.A_BOLD
+		parser = LorkHTMLParser(convert_charrefs=True)
+		parser.feed("\n".join(lines))
+		parser.close()
+		lines = parser.get_data()
 		# there's gotta be a better way to normalize these lines
 		# ...anyone?
-		lines = newlinere.sub("\n", "\n".join(lines))
-		lines = gtre.sub(">", lines)
-		lines = nbspre.sub(" ", lines)
-		lines = redre.sub(chr(256 + 3), lines)
-		lines = whitere.sub(chr(256 + 1), lines)
-		lines = boldre.sub(chr(266 + 1), lines)
 		lines = lines.split("\n")
 		lines = [textwrap.fill(line, self.cols) for line in lines]
 		lines = "\n".join(lines)
@@ -96,15 +118,16 @@ class Screen:
 		for i in range(len(text)):
 			if ord(text[i]) == 267:
 				self.lineattr |= curses.A_BOLD
+			elif ord(text[i]) == 268:
+				self.lineattr &= ~curses.A_BOLD
 			elif ord(text[i]) > 256:
 				self.lineattr = curses.color_pair(ord(text[i]) - 256)
 			else:
 				self.stdscr.addch(text[i], self.lineattr)
-		self.lineattr &= ~curses.A_BOLD
 
 	def renderInput(self):
-		self.stdscr.addstr(self.rows - 1, 0, ">" +
-				(" " * (self.cols - 2)), curses.color_pair(2))
+		self.stdscr.chgat(self.rows - 1, 0, -1, curses.color_pair(2))
+		self.stdscr.addstr(self.rows - 1, 0, ">", curses.color_pair(2))
 		self.stdscr.move(self.rows - 1, 2)
 
 	def getInput(self):
