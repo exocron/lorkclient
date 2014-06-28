@@ -8,3 +8,10 @@ To run (Ubuntu):
   * Totally will not work without redefining TERM!
 
 No Windows, sorry. (WINDOWS, Y U NO HAVE CURSES MODULE?)
+
+Known Issues:
+-------------
+
+HTML tags. A small amount of tags and entities are replaced (specifically br,
+gt, and nbsp). Everything else will show up verbatim in your terminal (avoid
+HELP like the plague!)
