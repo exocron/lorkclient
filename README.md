@@ -15,6 +15,7 @@ UPDATE: Turns out there *is* an unofficial port of curses to Windows.
 Known Issues:
 -------------
 
-HTML tags. A small amount of tags and entities are replaced (specifically br,
-gt, and nbsp). Everything else will show up verbatim in your terminal (avoid
-HELP like the plague!)
+HTML tags. Most tags are replaced (br becomes newlines, gt and nbsp are
+unescaped, b triggers bold color and the font tags trigger red color).
+Everything else will show up verbatim in your terminal (avoid HELP like the
+plague!)

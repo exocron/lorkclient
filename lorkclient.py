@@ -4,16 +4,17 @@ from liblork import *
 newlinere = re.compile("<BR.*?>", re.IGNORECASE)
 gtre = re.compile("&gt;", re.IGNORECASE)
 nbspre = re.compile("&nbsp;", re.IGNORECASE)
+redre = re.compile("<font .*?color='#FE2E2E'.*?>", re.IGNORECASE)
+whitere = re.compile("<font .*?color='#ccc'.*?>", re.IGNORECASE)
+boldre = re.compile("<b>", re.IGNORECASE)
 
 class Screen:
 	def __init__(self, stdscr):
 		self.titleText = "Lork v0.1"
 		self.stdscr = stdscr
 
-		#self.stdscr.nodelay(1) # getch is async
-		#curses.cbreak() # raw input mode instead of buffered
-		self.stdscr.keypad(1) # arrow keys / function keys
-		curses.curs_set(1) # invisible cursor
+		self.stdscr.keypad(0)
+		curses.curs_set(1)
 		curses.echo()
 
 		self.rows, self.cols = self.stdscr.getmaxyx()
@@ -24,6 +25,8 @@ class Screen:
 		curses.start_color()
 		curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLACK)
 		curses.init_pair(2, curses.COLOR_WHITE, 8)
+		curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
+		self.lineattr = curses.color_pair(1)
 
 		self.room = ""
 		self.score = 0
@@ -74,6 +77,9 @@ class Screen:
 		lines = newlinere.sub("\n", "\n".join(lines))
 		lines = gtre.sub(">", lines)
 		lines = nbspre.sub(" ", lines)
+		lines = redre.sub(chr(256 + 3), lines)
+		lines = whitere.sub(chr(256 + 1), lines)
+		lines = boldre.sub(chr(266 + 1), lines)
 		lines = lines.split("\n")
 		lines = [textwrap.fill(line, self.cols) for line in lines]
 		lines = "\n".join(lines)
@@ -82,8 +88,19 @@ class Screen:
 			lines = lines[-(self.rows-2):]
 		i = 1
 		for line in lines:
-			self.stdscr.addstr(i, 0, line)
+			self.addstr(i, 0, line)
 			i += 1
+
+	def addstr(self, y, x, text):
+		self.stdscr.move(y, x)
+		for i in range(len(text)):
+			if ord(text[i]) == 267:
+				self.lineattr |= curses.A_BOLD
+			elif ord(text[i]) > 256:
+				self.lineattr = curses.color_pair(ord(text[i]) - 256)
+			else:
+				self.stdscr.addch(text[i], self.lineattr)
+		self.lineattr &= ~curses.A_BOLD
 
 	def renderInput(self):
 		self.stdscr.addstr(self.rows - 1, 0, ">" +
