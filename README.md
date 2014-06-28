@@ -9,6 +9,9 @@ To run (Ubuntu):
 
 No Windows, sorry. (WINDOWS, Y U NO HAVE CURSES MODULE?)
 
+UPDATE: Turns out there *is* an unofficial port of curses to Windows.
+[Have fun.](http://www.lfd.uci.edu/~gohlke/pythonlibs/#curses)
+
 Known Issues:
 -------------
 
