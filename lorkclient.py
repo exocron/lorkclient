@@ -1,6 +1,11 @@
 import curses, re, textwrap
 from liblork import *
 from html.parser import HTMLParser
+try:
+	import yaml
+	have_yaml = True
+except:
+	have_yaml = False
 
 class LorkHTMLParser(HTMLParser):
 	def __init__(self, *args, **kwargs):
@@ -32,7 +37,7 @@ class LorkHTMLParser(HTMLParser):
 		return self.data_acc
 
 class Screen:
-	def __init__(self, stdscr):
+	def __init__(self, stdscr, custom=False):
 		self.titleText = "Lork v0.1"
 		self.stdscr = stdscr
 
@@ -41,7 +46,8 @@ class Screen:
 		curses.echo()
 
 		self.rows, self.cols = self.stdscr.getmaxyx()
-		self.lines = ["Type \"/quit\" or \"/exit\" to return to your shell\n",
+		self.lines = ["Type \"/quit\" or \"/exit\" to return to your shell",
+				"Custom commands loaded from custom.yml\n" if custom else "",
 				# hardcoded FTW
 				"Lork v0.1", "SHALL WE PLAY A GAME?\n"]
 
@@ -137,15 +143,35 @@ class Screen:
 		return text
 
 def startCurses(stdscr):
-	screen = Screen(stdscr)
+	if have_yaml:
+		try:
+			with open("custom.yaml", "r") as f:
+				custom = yaml.load(f)
+				screen = Screen(stdscr, True)
+		except:
+			custom = None
+			screen = Screen(stdscr)
+	else:
+		custom = None
+		screen = Screen(stdscr)
 	lc = LorkClient(verbose=True)
 	lc.addClearCallback(screen.clearLines)
 	imp = screen.getInput()
 	while imp.lower() not in (b"/quit", b"/exit"):
-		resp = lc.input(imp)
-		screen.setRoom(lc.room)
-		screen.setScore(lc.points)
-		screen.addLine(resp)
+		if imp.lower().startswith(b"/") and custom is not None:
+			try:
+				for cmd in custom[imp.lower()[1:].decode("utf-8")]:
+					resp = lc.input(cmd)
+					screen.setRoom(lc.room)
+					screen.setScore(lc.points)
+					screen.addLine(resp)
+			except KeyError:
+				screen.addLine("\nNo command named " + imp.decode("utf-8"))
+		else:
+			resp = lc.input(imp)
+			screen.setRoom(lc.room)
+			screen.setScore(lc.points)
+			screen.addLine(resp)
 		imp = screen.getInput()
 
 if __name__ == "__main__":
