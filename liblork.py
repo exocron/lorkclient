@@ -16,12 +16,12 @@ class LorkClient:
 
 	def getCookies(session=None):
 		if session is not None:
-			return requests.get("https://bsjtf.com", cookies=dict(PHPSESSID=session)).cookies
+			return requests.get("https://bsjtf.com/lork", cookies=dict(PHPSESSID=session)).cookies
 		else:
-			return requests.get("https://bsjtf.com").cookies
+			return requests.get("https://bsjtf.com/lork").cookies
 
 	def input(self, inprompt):
-		r = requests.post("https://bsjtf.com/command.php",
+		r = requests.post("https://bsjtf.com/lork/command.php",
 				cookies=self.cookies,
 				data=dict(inprompt=inprompt))
 		self.cookies = r.cookies or self.cookies
